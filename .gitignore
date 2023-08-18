@@ -2,9 +2,10 @@
 *.pyc
 *.pyo
 *!*.txt
-*SFP_*.txt
-*SFP_*.sqlite
-*SFP_*.log
+*.txt
+*.sqlite
+*.log
+*.db
 
 **/__pycache__/
 **/.vscode/

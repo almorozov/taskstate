@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, url_for, redirect
 
 from .models import ToDo, db
-from .func import create_app
+from .func import *
 
 app = create_app()
 db.init_app(app)
