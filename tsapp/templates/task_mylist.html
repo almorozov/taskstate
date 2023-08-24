@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}
+TaskState
+{% endblock %}
+
+{% block body %}
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="alert alert-warning" role="alert">
+        <ul class=flashes>
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    {% endwith %}
+    <div class="alert alert-secondary" role="alert">
+    <p class="lead"> <b> # Create Task </b> </p>
+    <form action="/taskcreate" method="post">
+        <div class="input-group mb-3">
+            <span class="input-group-text" id="basic-addon1">Title*</span>
+            <input type="text" name="title" id="title" class="form-control" placeholder="Title task" aria-label="Title task" aria-describedby="basic-addon1" minlength="3" maxlength="255" required>
+        </div>
+        <div class="input-group mb-3">
+            <span class="input-group-text" id="basic-addon2">Description</span>
+            <input type="text" name="description" id="description" class="form-control" placeholder="Description task" aria-label="Description task" aria-describedby="basic-addon1" minlength="3" maxlength="255">
+        </div>
+        <div class="input-group mb-3">
+            <label class="input-group-text" for="inputGroupSelect01">Type*</label>
+            <select class="form-select" name="did" id="did">
+                {% for el in desteam %}
+                <option value="{{ loop.index0 }}">{{ el }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="input-group mb-3">
+            <label class="input-group-text" for="inputGroupSelect02">Private*</label>
+            <select class="form-select" name="private" id="private">
+              <option value="False" selected>False</option>
+              <option value="True">True</option>
+            </select>
+        </div>
+        <b>*Required fields</b><br>
+        <input type="submit" class="btn btn-success" value="Create Task"><br>
+    </form>
+    </div>
+    <p class="lead"> <b> # My Created Tasks </b> </p>
+    {% if tasks|length > 0 %}
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th scope="col">#id</th>
+                <th scope="col">Date</th>
+                <th scope="col">Title</th>
+                <th scope="col">Description</th>
+                <th scope="col">Owner</th>
+                <th scope="col">Executor</th>
+                <th scope="col">Private</th>
+                <th scope="col">Status</th>
+                <th scope="col">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for el in tasks %}
+            <tr>
+                <th scope="row">{{ el.tid }}</th>
+                <td>{{ el.date.strftime('%d-%m-%Y') }}</td>
+                <td>{{ el.title }}</td>
+                <td>{{ el.description }}</td>
+                <td> // {{ el.TS_User.login }} </td>
+                <td> // {{ el.uid2 }} </td>
+                <td> {{ el.private }} </td>
+                <td><b> {{ tstatus[el.kstatus] }} </b></td>
+                <td><a href="/task/{{ el.tid }}" class="btn btn-warning" title="Read">*R</a><a href="/task/{{ el.tid }}/edit" class="btn btn-success" title="Write (Edit)">*W</a><a href="/task/{{ el.tid }}/del" class="btn btn-danger" title="Delete">*D</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p class="lead"> !!! Task not found</p>
+    {% endif %}
+{% endblock %}

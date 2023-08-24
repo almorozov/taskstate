@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}
+TaskState
+{% endblock %}
+
+{% block body %}
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="alert alert-warning" role="alert">
+        <ul class=flashes>
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    {% endwith %}
+    <p class="lead"> <b> # Task list >>> </b> </p>
+    {% if tasks|length > 0 %}
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th scope="col">#id</th>
+                <th scope="col">Date</th>
+                <th scope="col">Title</th>
+                <th scope="col">Description</th>
+                <th scope="col">Owner</th>
+                <th scope="col">Executor</th>
+                <th scope="col">Private</th>
+                <th scope="col">Status</th>
+                <th scope="col">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for el in tasks %}
+            <tr>
+                <th scope="row">{{ el.tid }}</th>
+                <td>{{ el.date.strftime('%d-%m-%Y') }}</td>
+                <td>{{ el.title }}</td>
+                <td>{{ el.description }}</td>
+                <td> // {{ el.TS_User.login }} </td>
+                <td> // {{ el.uid2 }} </td>
+                <td> {{ el.private }} </td>
+                <td><b> {{ tstatus[el.kstatus] }} </b></td>
+                <td><a href="/task/{{ el.tid }}/take" class="btn btn-success" title="Take to work">Take...</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p class="lead"> !!! Task not found</p>
+    {% endif %}
+{% endblock %}
