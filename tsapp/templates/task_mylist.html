@@ -56,7 +56,6 @@ TaskState
                 <th scope="col">Title</th>
                 <th scope="col">Description</th>
                 <th scope="col">Owner</th>
-                <th scope="col">Executor</th>
                 <th scope="col">Private</th>
                 <th scope="col">Status</th>
                 <th scope="col">Action</th>
@@ -69,8 +68,7 @@ TaskState
                 <td>{{ el.date.strftime('%d-%m-%Y') }}</td>
                 <td>{{ el.title }}</td>
                 <td>{{ el.description }}</td>
-                <td> // {{ el.TS_User.login }} </td>
-                <td> // {{ el.uid2 }} </td>
+                <td> // <b>{{ el.TS_User.login }}</b> </td>
                 <td> {{ el.private }} </td>
                 <td><b> {{ tstatus[el.kstatus] }} </b></td>
                 <td><a href="/task/{{ el.tid }}" class="btn btn-warning" title="Read">*R</a><a href="/task/{{ el.tid }}/edit" class="btn btn-success" title="Write (Edit)">*W</a><a href="/task/{{ el.tid }}/del" class="btn btn-danger" title="Delete">*D</a></td>

@@ -132,12 +132,18 @@ def taskcreate():
 @app.route('/task/<int:tid>')
 @login_required
 def task_detail(tid):
-    task = TS_Task.query.filter(and_(TS_Task.uid1==current_user.id, TS_Task.tid==tid)).order_by(TS_Task.date.desc()).first()
+    task = TS_Task.query.filter(TS_Task.tid==tid).order_by(TS_Task.date.desc()).first()
+    rid = f_rid_get(request)
     if task:
-        #app.logger.info('[FUNC] [/ticket] [Succeess] User:<%s> Read ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
-        return render_template("task_detail.html", task=task, tstatus=tstatus, desteam=desteam)
+        task_access = f_task_acl(task, rid, current_user.id)
+        if task_access:
+            user2 = TS_User.query.filter(TS_User.id==task.uid2).order_by(TS_User.date.desc()).first()
+            #app.logger.info('[FUNC] [/ticket] [Succeess] User:<%s> Read ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+            return render_template("task_detail.html", task=task, tstatus=tstatus, desteam=desteam, user2=user2)
+        else:
+            return redirect(url_for('tasklist'))
     else:
-        return redirect(url_for('mytask'))
+        return redirect(url_for('tasklist'))
 
 
 @app.route('/task/<int:tid>/edit', methods=['POST','GET'])
@@ -190,13 +196,14 @@ def task_del(tid):
 @login_required
 def tasklist():
     rid = f_rid_get(request)
+    users = TS_User.query.order_by(TS_User.date.desc()).all()
     if rid == 2:
         tasks = TS_Task.query.order_by(TS_Task.date.desc()).all()
     if rid == 1:
-        tasks = TS_Task.query.filter(or_(and_(or_(TS_Task.uid1==current_user.id, TS_Task.uid2==current_user.id, TS_Task.uid2==-1), TS_Task.private==False), and_(TS_Task.uid1==current_user.id, TS_Task.private==True))).order_by(TS_Task.date.desc()).all()
+        tasks = TS_Task.query.filter(or_(TS_Task.private==False, and_(TS_Task.uid1==current_user.id, TS_Task.private==True))).order_by(TS_Task.date.desc()).all()
     if rid == 0:
-        tasks = TS_Task.query.filter(or_(TS_Task.uid1==current_user.id, TS_Task.uid2==current_user.id)).order_by(TS_Task.date.desc()).all()
-    return render_template('task_list.html', tasks=tasks, desteam=desteam, tstatus=tstatus)
+        tasks = TS_Task.query.filter(TS_Task.uid1==current_user.id).order_by(TS_Task.date.desc()).all()
+    return render_template('task_list.html', tasks=tasks, desteam=desteam, tstatus=tstatus, users=users)
 
 
 @app.route('/task/<int:tid>/towork')
@@ -205,15 +212,64 @@ def task_towork(tid):
     task = TS_Task.query.filter(TS_Task.tid==tid).order_by(TS_Task.date.desc()).first()
     rid = f_rid_get(request)
     if task:
-        task_access = f_task_acl(task, rid)
-        task.title = request.form['title']
-        try:
-            db.session.delete(task)
-            db.session.commit()
-#            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
-        except:
-#            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
-            return "Error DB delete!"
+        task_access = f_task_acl(task, rid, current_user.id)
+        if task_access:
+            task.uid2 = current_user.id
+            try:
+                db.session.commit()
+    #            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+            except:
+    #            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                return "Error DB delete!"
 #    else:
 #        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
     return redirect(url_for('tasklist'))
+
+
+@app.route('/kanban')
+@login_required
+def kanban():
+    tasks = TS_Task.query.filter(TS_Task.uid2==current_user.id).order_by(TS_Task.date.desc()).all()
+    return render_template('task_kanban.html', tasks=tasks, desteam=desteam, tstatus=tstatus, login=current_user.login)
+
+
+@app.route('/task/<int:tid>/bstatus')
+@login_required
+def task_bstatus(tid):
+    task = TS_Task.query.filter(TS_Task.tid==tid).order_by(TS_Task.date.desc()).first()
+    rid = f_rid_get(request)
+    if task:
+        task_access = f_task_acl(task, rid, current_user.id)
+        if task_access:
+            if task.kstatus != 0:
+                task.kstatus -= 1
+            try:
+                db.session.commit()
+    #            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+            except:
+    #            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                return "Error DB delete!"
+#    else:
+#        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+    return redirect(url_for('kanban'))
+
+
+@app.route('/task/<int:tid>/nstatus')
+@login_required
+def task_nstatus(tid):
+    task = TS_Task.query.filter(TS_Task.tid==tid).order_by(TS_Task.date.desc()).first()
+    rid = f_rid_get(request)
+    if task:
+        task_access = f_task_acl(task, rid, current_user.id)
+        if task_access:
+            if task.kstatus != 2:
+                task.kstatus += 1
+            try:
+                db.session.commit()
+    #            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+            except:
+    #            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                return "Error DB delete!"
+#    else:
+#        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+    return redirect(url_for('kanban'))

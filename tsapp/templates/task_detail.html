@@ -5,14 +5,14 @@ TaskState
 {% endblock %}
 
 {% block body %}
-    <p class="lead"> # Task.ID ticket: <b> {{ task.tid }} </b> Date: {{ task.date.strftime('%d-%m-%Y') }} </p>
+    <p class="lead"> # Task.ID: <b> {{ task.tid }} </b> Date: <b>{{ task.date.strftime('%d-%m-%Y') }}</b> </p>
 
     <div class="alert alert-info">
         <p>Title: {{ task.title }}</p>
         <p>Description: {{ task.description }}</p>
         <p>Type: <b>{{ desteam[task.did] }}</b></p>
-        <p>Owner: //{{ task.TS_User.login }}</p>
-        <p>Executor: //{{ task.uid2 }}</p>
+        <p>Owner: // {{ task.TS_User.login }}</p>
+        <p>Executor: // {{ user2.login }}</p>
         <p>Private: {{ task.private }}</p>
         <p>Status task: <b>{{ tstatus[task.kstatus] }}</b></p>
     </div>

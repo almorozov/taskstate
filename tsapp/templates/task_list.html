@@ -39,8 +39,8 @@ TaskState
                 <td>{{ el.date.strftime('%d-%m-%Y') }}</td>
                 <td>{{ el.title }}</td>
                 <td>{{ el.description }}</td>
-                <td> // {{ el.TS_User.login }} </td>
-                <td> // {{ el.uid2 }} </td>
+                <td> // <b>{{ el.TS_User.login }}</b> </td>
+                <td> // {% set ussr = users | selectattr('id', 'equalto', el.uid2) %} {{ ussr | map(attribute='login') | list | first }} </td>
                 <td> {{ el.private }} </td>
                 <td><b> {{ tstatus[el.kstatus] }} </b></td>
                 <td><a href="/task/{{ el.tid }}" class="btn btn-warning" title="Read">*R</a><a href="/task/{{ el.tid }}/towork" class="btn btn-success" title="Take to work">*To_work</a></td>

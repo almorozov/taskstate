@@ -18,5 +18,14 @@ def f_rid_get(request):
     return rid
 
 
-def f_task_acl(task, rid):
-    return True
+def f_task_acl(task, rid, uid):
+    res = False
+    if rid == 2:
+        res = True
+    if rid == 1:
+        if task.private == False or (task.uid1 == uid and task.private == True):
+            res = True
+    if rid == 0:
+        if task.uid1 == uid:
+            res = True
+    return res
