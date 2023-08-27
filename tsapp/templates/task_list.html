@@ -43,7 +43,7 @@ TaskState
                 <td> // {{ el.uid2 }} </td>
                 <td> {{ el.private }} </td>
                 <td><b> {{ tstatus[el.kstatus] }} </b></td>
-                <td><a href="/task/{{ el.tid }}/take" class="btn btn-success" title="Take to work">Take...</a></td>
+                <td><a href="/task/{{ el.tid }}" class="btn btn-warning" title="Read">*R</a><a href="/task/{{ el.tid }}/towork" class="btn btn-success" title="Take to work">*To_work</a></td>
             </tr>
         {% endfor %}
         </tbody>

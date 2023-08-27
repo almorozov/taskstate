@@ -9,7 +9,7 @@ TaskState
 <div class="alert alert-info">
     <p>Username (login): <b>{{ user.login }}</b></p>
     <p>E-mail: <b>{{ user.email }}</b></p>
-    <p>Role in the team: <b>{{ rteam[user.rid] }}</b></p>
+    <p>Role in the team: <b>{{ rteam[rid] }}</b></p>
     <p>Reg date:<b> {{ user.date.strftime('%d-%m-%Y') }}</b></p>
     <a href="/logout" class="btn btn-success">Logout</a>
 </div>
