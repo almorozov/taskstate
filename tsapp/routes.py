@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, flash, make_response
+from flask import Flask, render_template, render_template_string, request, url_for, redirect, flash, make_response
 from sqlalchemy import and_, or_, not_
 from datetime import datetime, date
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -273,3 +273,29 @@ def task_nstatus(tid):
 #    else:
 #        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
     return redirect(url_for('kanban'))
+
+
+@app.route('/userstatus')
+@login_required
+def userstatus():
+    users = TS_User.query.order_by(TS_User.login.asc()).all()
+    return render_template("userstatus.html", users=users)
+
+
+@app.route('/search', methods=['GET'])
+@login_required
+def search():
+    tsearch = request.args.get('search')
+    if tsearch:
+        rid = f_rid_get(request)
+        if rid == 2:
+            tasks = TS_Task.query.filter(TS_Task.title.contains(tsearch)).order_by(TS_Task.date.desc()).all()
+        if rid == 1:
+            tasks = TS_Task.query.filter(and_(or_(TS_Task.private==False, and_(TS_Task.uid1==current_user.id, TS_Task.private==True)), TS_Task.title.contains(tsearch))).order_by(TS_Task.date.desc()).all()
+        if rid == 0:
+            tasks = TS_Task.query.filter(and_(TS_Task.uid1==current_user.id, TS_Task.title.contains(tsearch))).order_by(TS_Task.date.desc()).all()
+#            app.logger.info('[FUNC] [/search] [Succeess] User:<%s> Data:<%s>',current_user.login, tsearch)
+        return render_template("searchlist.html", tasks=tasks, tstatus=tstatus, tsearch=render_template_string(tsearch))
+        #return render_template_string(tsearch)
+    else:
+        return redirect(url_for('index'))
