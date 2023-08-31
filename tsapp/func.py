@@ -1,5 +1,6 @@
 from flask import Flask
-from .sconfig import rteam
+import jwt
+from .sconfig import rteam, JWT_KEY
 
 def create_app():
     from .sconfig import SECRET_KEY
@@ -29,3 +30,14 @@ def f_task_acl(task, rid, uid):
         if task.uid1 == uid:
             res = True
     return res
+
+
+def jwt_encod(user):
+    jwt_data = {"id": user.id,"login": user.login}
+    token = jwt.encode(jwt_data, JWT_KEY, algorithm="HS256")
+    return token
+
+
+def jwt_decod(token):
+    jwt_data = jwt.decode(token, JWT_KEY, algorithms="HS256")
+    return jwt_data

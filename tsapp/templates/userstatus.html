@@ -10,6 +10,7 @@ TaskState
     <table class="table table-striped">
         <thead>
             <tr>
+                <th scope="col">#</th>
                 <th scope="col">// User</th>
                 <th scope="col"># CountTask</th>
             </tr>
@@ -17,7 +18,8 @@ TaskState
         <tbody>
         {% for el in users %}
             <tr>
-                <th scope="row">{{ el.login }}</th>
+                <th scope="row">{{ el.id }}</th>
+                <th>{{ el.login }}</th>
                 <td>{{ el.TS_Task|length }}</td>
             </tr>
         {% endfor %}

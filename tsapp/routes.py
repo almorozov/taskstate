@@ -93,6 +93,79 @@ def reg():
         return render_template("reg.html")
 
 
+@app.route('/passrec', methods=['POST','GET'])
+def passrec():
+    p = 0
+    token = ""
+    if len(request.args) > 0:
+        if request.args.get('login'):
+            ulogin = request.args.get('login')
+            user = TS_User.query.filter(TS_User.login==ulogin).first()
+            if user:
+                token = jwt_encod(user)
+                user.token = token
+                try:
+                    db.session.add(user)
+                    db.session.commit()
+                    flash('Token created...')
+    #                app.logger.info('[AUTH] [REG] [Succeess] User:<%s>', ulogin)
+                except:
+    #                app.logger.error('[AUTH] [REG] [Failed] User:<%s>. Error DB insert.', ulogin)
+                    flash('Error DB insert')
+            else:
+                flash('Login incorrect')
+    #            app.logger.warning('[AUTH] [LOGIN] [Failed] User:<%s> Password:<%s>', ulogin, upassword)
+        if request.args.get('token') and not request.args.get('password'):
+            token = request.args.get('token')
+            try:
+                token_data = jwt_decod(token)
+            except:
+                p = 0
+                token_data = ""
+                flash('Token incorrect')
+            if token_data:
+                uid = token_data["id"]
+                user = TS_User.query.filter(TS_User.id==uid).first()
+                if user:
+                    p = 1
+                    return render_template("recpass.html", p=p, token=token)
+                else:
+                    p = 0
+                    flash('Token incorrect')
+            else:
+                p = 0
+                flash('Token incorrect')
+        if request.args.get('token') and request.args.get('password'):
+            token = request.args.get('token')
+            try:
+                token_data = jwt_decod(token)
+            except:
+                p = 0
+                token_data = ""
+                flash('Token incorrect')
+            if token_data:
+                uid = token_data["id"]
+                user = TS_User.query.filter(TS_User.id==uid).first()
+                if user:
+                    p = 0
+                    user.password = generate_password_hash(request.args.get('password'))
+                    user.token = ""
+                    try:
+                        db.session.add(user)
+                        db.session.commit()
+        #                app.logger.info('[AUTH] [REG] [Succeess] User:<%s>', ulogin)
+                    except:
+        #                app.logger.error('[AUTH] [REG] [Failed] User:<%s>. Error DB insert.', ulogin)
+                        flash('Error DB insert')
+            else:
+                p = 0
+                flash('Token incorrect')
+    #            app.logger.warning('[AUTH] [LOGIN] [Failed] User:<%s> Password:<%s>', ulogin, upassword)
+    else:
+        pass
+    return render_template("recpass.html", p=p, token=token)
+
+
 @app.after_request
 def redirect_to_login(response):
     if response.status_code == 401:
@@ -299,3 +372,94 @@ def search():
         #return render_template_string(tsearch)
     else:
         return redirect(url_for('index'))
+
+
+@app.route('/adm')
+@login_required
+def adm():
+    reg = 0
+    rid = f_rid_get(request)
+    if rid == 2:
+        users = TS_User.query.order_by(TS_User.date.desc()).all()
+#        app.logger.info('[FUNC] [/adminpanel] [Succeess] User:<%s> Read count(tickets): <%d>', current_user.login, len(tickets))
+        return render_template("admpanel.html", users=users, rteam=rteam, reg=reg)
+    else:
+        users = TS_User.query.filter(TS_User.rid==2).order_by(TS_User.date.desc()).all()
+        if len(users) == 0:
+            reg = 1
+            return render_template("admpanel.html", users=users, rteam=rteam, reg=reg)
+        else:
+#        app.logger.warning('[FUNC] [/adminpanel] [Failed] User:<%s> ', current_user.login)
+            return redirect(url_for('index'))
+
+
+@app.route('/adm/<int:id>/nrteam')
+@login_required
+def adm_nrteam(id):
+    rid = f_rid_get(request)
+    if rid == 2:
+        user = TS_User.query.filter(TS_User.id==id).order_by(TS_User.date.desc()).first()
+        if user:
+            if user.rid != 2:
+                user.rid += 1
+                try:
+                    db.session.commit()
+#            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                except:
+#            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                    return "Error DB delete!"
+    #    else:
+    #        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+        return redirect(url_for('adm'))
+    else:
+        redirect(url_for('index'))
+
+
+@app.route('/adm/<int:id>/brteam')
+@login_required
+def adm_brteam(id):
+    rid = f_rid_get(request)
+    if rid == 2:
+        user = TS_User.query.filter(TS_User.id==id).order_by(TS_User.date.desc()).first()
+        if user:
+            if user.rid != 0:
+                user.rid -= 1
+                try:
+                    db.session.commit()
+#            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                except:
+#            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                    return "Error DB delete!"
+    #    else:
+    #        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+        return redirect(url_for('adm'))
+    else:
+        redirect(url_for('index'))
+
+
+@app.route('/admreg', methods=['POST'])
+@login_required
+def admreg():
+    if request.method == "POST":
+        ulogin=request.form['login']
+        upassword=request.form['password']
+        if not(ulogin or upassword):
+            flash('Please, fill fileds: login, password')
+            return redirect(url_for('adm'))
+        elif not(TS_User.query.filter_by(login=ulogin).first()) and ulogin and upassword:
+            user = TS_User(login=ulogin, password=generate_password_hash(upassword), email=request.form['email'], rid=2, token="")
+            try:
+                db.session.add(user)
+                db.session.commit()
+#                app.logger.info('[AUTH] [REG] [Succeess] User:<%s>', ulogin)
+                return redirect(url_for('adm'))
+            except:
+#                app.logger.error('[AUTH] [REG] [Failed] User:<%s>. Error DB insert.', ulogin)
+                flash('Error DB insert')
+                return redirect(url_for('adm'))
+        else:
+#            app.logger.warning('[AUTH] [REG] [Failed] Please, enter other login or not null login or not null password')
+            flash('Please, enter other login or not null login or not null password')
+            return redirect(url_for('adm'))
+    else:
+        redirect(url_for('index'))
