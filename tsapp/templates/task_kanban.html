@@ -16,14 +16,14 @@ TaskState
     </div>
     {% endif %}
     {% endwith %}
-    <p class="lead"> <b> # My Kanban Board // Executor: {{ login }} </b> </p>
+    <p class="lead text-success"> <b> # My Kanban Board // Executor: {{ login }} </b> </p>
     {% if tasks|length > 0 %}
-    <table class="table">
+    <table class="table table-dark text-success">
         <thead>
             <tr>
-                <th scope="col" style="width: 18rem;">{{ tstatus[0] }}</th>
-                <th scope="col" style="width: 18rem;">{{ tstatus[1] }}</th>
-                <th scope="col" style="width: 18rem;">{{ tstatus[2] }}</th>
+                <th scope="col" style="width: 18rem;" class="table-warning text-warning">{{ tstatus[0] }}</th>
+                <th scope="col" style="width: 18rem;" class="table-primary text-primary">{{ tstatus[1] }}</th>
+                <th scope="col" style="width: 18rem;" class="table-success text-success">{{ tstatus[2] }}</th>
             </tr>
         </thead>
         <tbody>
@@ -31,9 +31,9 @@ TaskState
         {% set tstatus1 = tasks | selectattr('kstatus', 'equalto', 1) %}
         {% set tstatus2 = tasks | selectattr('kstatus', 'equalto', 2) %}
         <tr>
-            <th>
+            <th class="table-warning">
             {% for el in tstatus0 %}
-                <div class="card" style="width: 15rem;">
+                <div class="card text-success border-success mb-1" style="width: 15rem;">
                 <div class="card-body">
                   <h5 class="card-title">#ID: <b>{{ el.tid }}</b> [<b>{{ el.date.strftime('%d-%m-%Y') }}</b>]</h5>
                   <h6 class="card-subtitle mb-2 text-body-secondary">{{ el.title }}</h6>
@@ -42,9 +42,9 @@ TaskState
                 </div>
             {% endfor %}
             </th>
-            <th>
+            <th class="table-primary">
                 {% for el in tstatus1 %}
-                <div class="card" style="width: 15rem;">
+                <div class="card text-success border-success mb-1" style="width: 15rem;">
                     <div class="card-body">
                       <h5 class="card-title">#ID: <b>{{ el.tid }}</b> [<b>{{ el.date.strftime('%d-%m-%Y') }}</b>]</h5>
                       <h6 class="card-subtitle mb-2 text-body-secondary">{{ el.title }}</h6>
@@ -53,9 +53,9 @@ TaskState
                     </div>
                 {% endfor %}
             </th>
-            <th>
+            <th class="table-success">
                 {% for el in tstatus2 %}
-                <div class="card" style="width: 15rem;">
+                <div class="card text-success border-success mb-1" style="width: 15rem;">
                     <div class="card-body">
                       <h5 class="card-title">#ID: <b>{{ el.tid }}</b> [<b>{{ el.date.strftime('%d-%m-%Y') }}</b>]</h5>
                       <h6 class="card-subtitle mb-2 text-body-secondary">{{ el.title }}</h6>
@@ -68,6 +68,6 @@ TaskState
         </tbody>
     </table>
     {% else %}
-        <p class="lead"> !!! Task not found</p>
+        <p class="lead text-success"> !!! Task not found</p>
     {% endif %}
 {% endblock %}

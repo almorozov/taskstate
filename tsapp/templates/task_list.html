@@ -16,9 +16,9 @@ TaskState
     </div>
     {% endif %}
     {% endwith %}
-    <p class="lead"> <b> # Task list >>> </b> </p>
+    <p class="lead text-success"> <b> # Task list >>> </b> </p>
     {% if tasks|length > 0 %}
-    <table class="table table-striped">
+    <table class="table table-dark text-success">
         <thead>
             <tr>
                 <th scope="col">#id</th>
@@ -35,7 +35,7 @@ TaskState
         <tbody>
         {% for el in tasks %}
             <tr>
-                <th scope="row">{{ el.tid }}</th>
+                <td>{{ el.tid }}</td>
                 <td>{{ el.date.strftime('%d-%m-%Y') }}</td>
                 <td>{{ el.title }}</td>
                 <td>{{ el.description }}</td>
@@ -49,6 +49,6 @@ TaskState
         </tbody>
     </table>
     {% else %}
-        <p class="lead"> !!! Task not found</p>
+        <p class="lead text-success"> !!! Task not found</p>
     {% endif %}
 {% endblock %}

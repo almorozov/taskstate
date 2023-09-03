@@ -16,18 +16,18 @@ TaskState
     </div>
     {% endif %}
     {% endwith %}
-    <div class="alert alert-secondary" role="alert">
+    <div class="alert alert-success text-success" role="alert">
     <p class="lead"> <b> # Create Task </b> </p>
     <form action="/taskcreate" method="post">
-        <div class="input-group mb-3">
+        <div class="input-group mb-1">
             <span class="input-group-text" id="basic-addon1">Title*</span>
-            <input type="text" name="title" id="title" class="form-control" placeholder="Title task" aria-label="Title task" aria-describedby="basic-addon1" minlength="3" maxlength="255" required>
+            <input type="text" name="title" id="title" class="form-control" aria-label="Title task" aria-describedby="basic-addon1" minlength="3" maxlength="255" required>
         </div>
-        <div class="input-group mb-3">
+        <div class="input-group mb-1">
             <span class="input-group-text" id="basic-addon2">Description</span>
-            <input type="text" name="description" id="description" class="form-control" placeholder="Description task" aria-label="Description task" aria-describedby="basic-addon1" minlength="3" maxlength="255">
+            <input type="text" name="description" id="description" class="form-control" aria-label="Description task" aria-describedby="basic-addon1" minlength="3" maxlength="255">
         </div>
-        <div class="input-group mb-3">
+        <div class="input-group mb-1">
             <label class="input-group-text" for="inputGroupSelect01">Type*</label>
             <select class="form-select" name="did" id="did">
                 {% for el in desteam %}
@@ -35,7 +35,7 @@ TaskState
                 {% endfor %}
             </select>
         </div>
-        <div class="input-group mb-3">
+        <div class="input-group mb-1">
             <label class="input-group-text" for="inputGroupSelect02">Private*</label>
             <select class="form-select" name="private" id="private">
               <option value="False" selected>False</option>
@@ -46,9 +46,9 @@ TaskState
         <input type="submit" class="btn btn-success" value="Create Task"><br>
     </form>
     </div>
-    <p class="lead"> <b> # My Created Tasks </b> </p>
+    <p class="lead text-success"> <b> # My Created Tasks </b> </p>
     {% if tasks|length > 0 %}
-    <table class="table table-striped">
+    <table class="table table-dark text-success">
         <thead>
             <tr>
                 <th scope="col">#id</th>
@@ -64,7 +64,7 @@ TaskState
         <tbody>
         {% for el in tasks %}
             <tr>
-                <th scope="row">{{ el.tid }}</th>
+                <td>{{ el.tid }}</td>
                 <td>{{ el.date.strftime('%d-%m-%Y') }}</td>
                 <td>{{ el.title }}</td>
                 <td>{{ el.description }}</td>
@@ -77,6 +77,6 @@ TaskState
         </tbody>
     </table>
     {% else %}
-        <p class="lead"> !!! Task not found</p>
+        <p class="lead text-success"> !!! Task not found</p>
     {% endif %}
 {% endblock %}

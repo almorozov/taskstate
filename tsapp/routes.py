@@ -1,4 +1,4 @@
-from flask import Flask, render_template, render_template_string, request, url_for, redirect, flash, make_response
+from flask import Flask, render_template, render_template_string, request, url_for, redirect, flash, make_response, has_request_context
 from sqlalchemy import and_, or_, not_
 from datetime import datetime, date
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -11,11 +11,34 @@ import os
 
 from .models import TS_Task, TS_User, db
 from .sconfig import desteam, tstatus, rteam
+from .config import file_log
 from .func import *
 
+#For logs
+class RequestFormatter(logging.Formatter):
+    def format(self, record):
+        if has_request_context():
+            record.url = request.url
+            record.remote_addr = request.remote_addr
+        else:
+            record.url = None
+            record.remote_addr = None
+        return super().format(record)
+
+formatter = RequestFormatter('[%(asctime)s] [%(levelname)s] from %(remote_addr)s req: %(url)s > %(message)s')
+
+#Init App
 app = create_app()
 db.init_app(app)
 manager = LoginManager(app)
+if __name__ != '__main__':
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
+handler = RotatingFileHandler(file_log, maxBytes=1048576, backupCount=10)
+handler.setLevel(logging.INFO)
+handler.setFormatter(formatter)
+app.logger.addHandler(handler)
 
 
 @manager.user_loader
@@ -31,7 +54,7 @@ def index():
 @app.route('/myprofile')
 @login_required
 def myprofile():
-#    app.logger.info('[FUNC] [/MyProfile] [Succeess] User:<%s>',current_user.login)
+    app.logger.info('[FUNC] [/MyProfile] [Succeess] User:<%s>',current_user.login)
     rid = f_rid_get(request)
     return render_template("myprofile.html", user=current_user, rteam=rteam, rid=rid)
 
@@ -46,11 +69,11 @@ def login():
             login_user(user)
             resp = make_response(redirect(url_for('myprofile')))
             resp.set_cookie('rid', str(user.rid))
-#            app.logger.info('[AUTH] [LOGIN] [Succeess] User:<%s>', current_user.login)
+            app.logger.info('[AUTH] [LOGIN] [Succeess] User:<%s>, role: <%s>', current_user.login, current_user.rid)
             return resp
         else:
             flash('Login or password incorrect')
-#            app.logger.warning('[AUTH] [LOGIN] [Failed] User:<%s> Password:<%s>', ulogin, upassword)
+            app.logger.warning('[AUTH] [LOGIN] [Failed] User:<%s> Password:<%s>', ulogin, upassword)
             return redirect(url_for('login'))
     else:
         return render_template("login.html")
@@ -59,7 +82,7 @@ def login():
 @app.route('/logout', methods=['POST','GET'])
 @login_required
 def logout():
-#    app.logger.info('[AUTH] [LOGOUT] [Succeess] User:<%s>', current_user.login)
+    app.logger.info('[AUTH] [LOGOUT] [Succeess] User:<%s>', current_user.login)
     logout_user()
     resp = make_response(redirect(url_for('index')))
     resp.set_cookie('rid', "", 0)
@@ -79,14 +102,14 @@ def reg():
             try:
                 db.session.add(user)
                 db.session.commit()
-#                app.logger.info('[AUTH] [REG] [Succeess] User:<%s>', ulogin)
+                app.logger.info('[AUTH] [REG] [Succeess] User:<%s>', ulogin)
                 return redirect('/login')
             except:
-#                app.logger.error('[AUTH] [REG] [Failed] User:<%s>. Error DB insert.', ulogin)
+                app.logger.error('[AUTH] [REG] [Failed] User:<%s>. Error DB insert.', ulogin)
                 flash('Error DB insert')
                 return redirect('/reg')
         else:
-#            app.logger.warning('[AUTH] [REG] [Failed] Please, enter other login or not null login or not null password')
+            app.logger.warning('[AUTH] [REG] [Failed] Please, enter other login or not null login or not null password')
             flash('Please, enter other login or not null login or not null password')
             return redirect('/reg')
     else:
@@ -108,32 +131,37 @@ def passrec():
                     db.session.add(user)
                     db.session.commit()
                     flash('Token created...')
-    #                app.logger.info('[AUTH] [REG] [Succeess] User:<%s>', ulogin)
+                    app.logger.info('[AUTH] [passrec] [Succeess] For User:<%s> token <%s> created', ulogin, token)
                 except:
-    #                app.logger.error('[AUTH] [REG] [Failed] User:<%s>. Error DB insert.', ulogin)
+                    app.logger.error('[AUTH] [passrec] [Failed] User:<%s>. Error DB insert.', ulogin)
                     flash('Error DB insert')
             else:
                 flash('Login incorrect')
-    #            app.logger.warning('[AUTH] [LOGIN] [Failed] User:<%s> Password:<%s>', ulogin, upassword)
+                app.logger.warning('[AUTH] [passrec] [Failed] User:<%s> does not exist', ulogin)
         if request.args.get('token') and not request.args.get('password'):
             token = request.args.get('token')
             try:
                 token_data = jwt_decod(token)
+                app.logger.info('[AUTH] [passrec] [Succeess] For token: <%s> exist data: <%s>', token, token_data)
             except:
                 p = 0
                 token_data = ""
                 flash('Token incorrect')
+                app.logger.error('[AUTH] [passrec] [Failed] Token: <%s> incorrect', token)
             if token_data:
                 uid = token_data["id"]
                 user = TS_User.query.filter(TS_User.id==uid).first()
                 if user:
                     p = 1
+                    app.logger.info('[AUTH] [passrec] [Succeess] For token: <%s> exist user: <%s>', token, user.login)
                     return render_template("recpass.html", p=p, token=token)
                 else:
                     p = 0
                     flash('Token incorrect')
+                    app.logger.error('[AUTH] [passrec] [Failed] Token: <%s> incorrect. Not exist user.', token)
             else:
                 p = 0
+                app.logger.error('[AUTH] [passrec] [Failed] Token: <%s> incorrect. Not exist data.', token)
                 flash('Token incorrect')
         if request.args.get('token') and request.args.get('password'):
             token = request.args.get('token')
@@ -142,6 +170,7 @@ def passrec():
             except:
                 p = 0
                 token_data = ""
+                app.logger.error('[AUTH] [passrec] [Failed] Token: <%s> incorrect. Not exist data. Password: <%s>', token, request.args.get('password'))
                 flash('Token incorrect')
             if token_data:
                 uid = token_data["id"]
@@ -153,14 +182,14 @@ def passrec():
                     try:
                         db.session.add(user)
                         db.session.commit()
-        #                app.logger.info('[AUTH] [REG] [Succeess] User:<%s>', ulogin)
+                        app.logger.info('[AUTH] [passrec] [Succeess] For User:<%s> change password', user.login)
                     except:
-        #                app.logger.error('[AUTH] [REG] [Failed] User:<%s>. Error DB insert.', ulogin)
+                        app.logger.error('[AUTH] [passrec] [Failed] User:<%s>. Error DB insert.', user.login)
                         flash('Error DB insert')
             else:
                 p = 0
                 flash('Token incorrect')
-    #            app.logger.warning('[AUTH] [LOGIN] [Failed] User:<%s> Password:<%s>', ulogin, upassword)
+                app.logger.error('[AUTH] [passrec] [Failed] Token: <%s> incorrect. Not exist data.', token)
     else:
         pass
     return render_template("recpass.html", p=p, token=token)
@@ -184,15 +213,15 @@ def mytask():
 @login_required
 def taskcreate():
     if request.method == "POST":
-        if (len(request.form['title']) > 2 and int(request.form['did']) and bool(request.form['private'])):
+        if (len(request.form['title']) > 2 and type(int(request.form['did'])) == int and type(eval(request.form['private'])) == bool):
             task = TS_Task(did=int(request.form['did']), title=request.form['title'], description=request.form['description'], private=eval(request.form['private']), uid1=current_user.id, uid2=-1)
             try:
                 db.session.add(task)
                 db.session.commit()
-                #app.logger.info('[FUNC] [/CreateTicket] [Succeess] User:<%s> Data:<%s>',current_user.login, ticket)
+                app.logger.info('[FUNC] [/taskcreate] [Succeess] User:<%s> Title:<%s> Description:<%s>',current_user.login, task.title, task.description)
                 return redirect(url_for('mytask'))
             except:
-                #app.logger.error('[FUNC] [/CreateTicket] [Failed] User:<%s> Error DB insert',current_user.login)
+                app.logger.error('[FUNC] [/taskcreate] [Failed] User:<%s> Error DB insert',current_user.login)
                 flash('Error DB insert')
                 return redirect(url_for('mytask'))
         else:
@@ -211,7 +240,7 @@ def task_detail(tid):
         task_access = f_task_acl(task, rid, current_user.id)
         if task_access:
             user2 = TS_User.query.filter(TS_User.id==task.uid2).order_by(TS_User.date.desc()).first()
-            #app.logger.info('[FUNC] [/ticket] [Succeess] User:<%s> Read ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+            app.logger.info('[FUNC] [/task] [Succeess] User:<%s> Role:<%d> Read task: <%s> owner:<%s>', current_user.login, rid, task.tid, task.TS_User.login)
             return render_template("task_detail.html", task=task, tstatus=tstatus, desteam=desteam, user2=user2)
         else:
             return redirect(url_for('tasklist'))
@@ -225,26 +254,26 @@ def task_edit(tid):
     task = TS_Task.query.filter(and_(TS_Task.uid1==current_user.id, TS_Task.tid==tid)).order_by(TS_Task.date.desc()).first()
     if task:
         if request.method == "POST":
-            if (len(request.form['title']) > 2 and int(request.form['did']) and bool(request.form['private'])):
+            if (len(request.form['title']) > 2 and type(int(request.form['did'])) == int and type(eval(request.form['private'])) == bool):
                 task.title = request.form['title']
                 task.description = request.form['description']
                 task.did = int(request.form['did'])
                 task.private = eval(request.form['private'])
                 try:
                     db.session.commit()
-#                    app.logger.info('[FUNC] [/ticket/edit] [Succeess] User:<%s> Edit ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                    app.logger.info('[FUNC] [/task/edit] [Succeess] User:<%s> Edit task: <%s> owner:<%s>', current_user.login, task.tid, task.TS_User.login)
                     return redirect(url_for('mytask'))
                 except:
-#                    app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB insert/', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                    app.logger.error('[FUNC] [/task/edit] [Failed] User:<%s> Edit task: <%s> owner:<%s>. Error DB insert/', current_user.login, task.tid, task.TS_User.login)
                     flash('Error DB insert')
-                    return redirect('/task/' + tid + '/edit')
+                    return redirect('/task/' + str(tid) + '/edit')
             else:
                 flash('Please, enter all rewuired data!')
-                return redirect('/task/' + tid + '/edit')
+                return redirect('/task/' + str(tid) + '/edit')
         else:
             return render_template("task_edit.html", task=task, desteam=desteam)
     else:
-#        app.logger.warning('[FUNC] [/ticket/edit] [Failed] User:<%s> Edit ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+        app.logger.warning('[FUNC] [/task/edit] [Failed] User:<%s> Edit task: <%s> owner:<%s>', current_user.login, task.tid, task.TS_User.login)
         return redirect(url_for('mytask'))
 
 
@@ -256,12 +285,12 @@ def task_del(tid):
         try:
             db.session.delete(task)
             db.session.commit()
-#            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+            app.logger.info('[FUNC] [/task/del] [Succeess] User:<%s> Del task: <%s> owner:<%s>', current_user.login, task.tid, task.TS_User.login)
         except:
-#            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+            app.logger.error('[FUNC] [/task/del] [Failed] User:<%s> Del task: <%s> owner:<%s>. Error DB delete!', current_user.login, task.tid, task.TS_User.login)
             return "Error DB delete!"
-#    else:
-#        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+    else:
+        app.logger.warning('[FUNC] [/task/del] [Failed] User:<%s> Del task: <%s> owner:<%s>. Task not found!', current_user.login, task.tid, task.TS_User.login)
     return redirect(url_for('mytask'))
 
 
@@ -276,6 +305,7 @@ def tasklist():
         tasks = TS_Task.query.filter(or_(TS_Task.private==False, and_(TS_Task.uid1==current_user.id, TS_Task.private==True))).order_by(TS_Task.date.desc()).all()
     if rid == 0:
         tasks = TS_Task.query.filter(TS_Task.uid1==current_user.id).order_by(TS_Task.date.desc()).all()
+    app.logger.info('[FUNC] [/tasklist] [Succeess] User:<%s> Role:<%d>/<%d>', current_user.login, current_user.rid, rid)
     return render_template('task_list.html', tasks=tasks, desteam=desteam, tstatus=tstatus, users=users)
 
 
@@ -290,12 +320,12 @@ def task_towork(tid):
             task.uid2 = current_user.id
             try:
                 db.session.commit()
-    #            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                app.logger.info('[FUNC] [/task/towork] [Succeess] User:<%s> Role:<%d> get task: <%s> owner:<%s>', current_user.login, rid, task.tid, task.TS_User.login)
             except:
-    #            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                app.logger.error('[FUNC] [/task/towork] [Failed] User:<%s> get task: <%s> owner:<%s>. Error DB delete!', current_user.login, task.tid, task.TS_User.login)
                 return "Error DB delete!"
-#    else:
-#        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+    else:
+        app.logger.warning('[FUNC] [/task/towork] [Failed] User:<%s> get task: <%s> owner:<%s>. Task not found!', current_user.login, task.tid, task.TS_User.login)
     return redirect(url_for('tasklist'))
 
 
@@ -318,12 +348,12 @@ def task_bstatus(tid):
                 task.kstatus -= 1
             try:
                 db.session.commit()
-    #            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                app.logger.info('[FUNC] [/task/bstatus] [Succeess] User:<%s> Role:<%d> BackStatus task: <%s> owner:<%s>', current_user.login, rid, task.tid, task.TS_User.login)
             except:
-    #            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                app.logger.error('[FUNC] [/task/bstatus] [Failed] User:<%s> BackStatus task: <%s> owner:<%s>. Error DB delete!', current_user.login, task.tid, task.TS_User.login)
                 return "Error DB delete!"
-#    else:
-#        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+    else:
+        app.logger.warning('[FUNC] [/task/bstatus] [Failed] User:<%s> BackStatus task: <%s> owner:<%s>. Task not found!', current_user.login, task.tid, task.TS_User.login)
     return redirect(url_for('kanban'))
 
 
@@ -339,12 +369,12 @@ def task_nstatus(tid):
                 task.kstatus += 1
             try:
                 db.session.commit()
-    #            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                app.logger.info('[FUNC] [/task/nstatus] [Succeess] User:<%s> Role:<%d> NextStatus task: <%s> owner:<%s>', current_user.login, rid, task.tid, task.TS_User.login)
             except:
-    #            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                app.logger.error('[FUNC] [/task/nstatus] [Failed] User:<%s> NextStatus task: <%s> owner:<%s>. Error DB delete!', current_user.login, task.tid, task.TS_User.login)
                 return "Error DB delete!"
-#    else:
-#        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+    else:
+        app.logger.warning('[FUNC] [/task/nstatus] [Failed] User:<%s> NextStatus task: <%s> owner:<%s>. Task not found!', current_user.login, task.tid, task.TS_User.login)
     return redirect(url_for('kanban'))
 
 
@@ -367,9 +397,8 @@ def search():
             tasks = TS_Task.query.filter(and_(or_(TS_Task.private==False, and_(TS_Task.uid1==current_user.id, TS_Task.private==True)), TS_Task.title.contains(tsearch))).order_by(TS_Task.date.desc()).all()
         if rid == 0:
             tasks = TS_Task.query.filter(and_(TS_Task.uid1==current_user.id, TS_Task.title.contains(tsearch))).order_by(TS_Task.date.desc()).all()
-#            app.logger.info('[FUNC] [/search] [Succeess] User:<%s> Data:<%s>',current_user.login, tsearch)
+        app.logger.info('[FUNC] [/search] [Succeess] User:<%s> Role:<%d> Data:<%s>',current_user.login, rid, tsearch)
         return render_template("searchlist.html", tasks=tasks, tstatus=tstatus, tsearch=render_template_string(tsearch))
-        #return render_template_string(tsearch)
     else:
         return redirect(url_for('index'))
 
@@ -381,15 +410,16 @@ def adm():
     rid = f_rid_get(request)
     if rid == 2:
         users = TS_User.query.order_by(TS_User.date.desc()).all()
-#        app.logger.info('[FUNC] [/adminpanel] [Succeess] User:<%s> Read count(tickets): <%d>', current_user.login, len(tickets))
+        app.logger.info('[FUNC] [/adminpanel] [Succeess] User:<%s> Role:<%d>/<%d> Read users: <%d>', current_user.login, current_user.rid, rid, len(users))
         return render_template("admpanel.html", users=users, rteam=rteam, reg=reg)
     else:
         users = TS_User.query.filter(TS_User.rid==2).order_by(TS_User.date.desc()).all()
         if len(users) == 0:
             reg = 1
+            app.logger.info('[FUNC] [/adminpanel] [Succeess] User:<%s> Role:<%d>/<%d> Start initialization >> Registration of a new captain for the service', current_user.login, current_user.rid, rid)
             return render_template("admpanel.html", users=users, rteam=rteam, reg=reg)
         else:
-#        app.logger.warning('[FUNC] [/adminpanel] [Failed] User:<%s> ', current_user.login)
+            app.logger.warning('[FUNC] [/adminpanel] [Failed] User:<%s> Access is denied', current_user.login)
             return redirect(url_for('index'))
 
 
@@ -404,12 +434,12 @@ def adm_nrteam(id):
                 user.rid += 1
                 try:
                     db.session.commit()
-#            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                    app.logger.info('[FUNC] [/adminpanel/nrteam] [Succeess] User:<%s> Role:<%d>/<%d> For user:<%s> upd role to:<%d>', current_user.login, current_user.rid, rid, user.login, user.rid)
                 except:
-#            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                    app.logger.error('[FUNC] [/adminpanel/nrteam] [Succeess] User:<%s> Role:<%d> For user:<%s> upd role to:<%d>. Error DB delete!', current_user.login, current_user.rid, user.login, user.rid)
                     return "Error DB delete!"
-    #    else:
-    #        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+        else:
+            app.logger.warning('[FUNC] [/adminpanel/nrteam] [Failed] User:<%s> Role:<%d> For user:<%s> upd role to:<%d> User not found!', current_user.login, current_user.rid, user.login, user.rid)
         return redirect(url_for('adm'))
     else:
         redirect(url_for('index'))
@@ -426,12 +456,12 @@ def adm_brteam(id):
                 user.rid -= 1
                 try:
                     db.session.commit()
-#            app.logger.info('[FUNC] [/ticket/del] [Succeess] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                    app.logger.info('[FUNC] [/adminpanel/brteam] [Succeess] User:<%s> Role:<%d>/<%d> For user:<%s> upd role to:<%d>', current_user.login, current_user.rid, rid, user.login, user.rid)
                 except:
-#            app.logger.error('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>. Error DB delete!', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+                    app.logger.error('[FUNC] [/adminpanel/brteam] [Succeess] User:<%s> Role:<%d> For user:<%s> upd role to:<%d>. Error DB delete!', current_user.login, current_user.rid, user.login, user.rid)
                     return "Error DB delete!"
-    #    else:
-    #        app.logger.warning('[FUNC] [/ticket/del] [Failed] User:<%s> Del ticket: <%s> <%s> pilot: <%s>', current_user.login, ticket.tid, ticket.fpid, ticket.SFP_Users.login)
+        else:
+            app.logger.warning('[FUNC] [/adminpanel/brteam] [Failed] User:<%s> Role:<%d> For user:<%s> upd role to:<%d> User not found!', current_user.login, current_user.rid, user.login, user.rid)
         return redirect(url_for('adm'))
     else:
         redirect(url_for('index'))
@@ -451,14 +481,14 @@ def admreg():
             try:
                 db.session.add(user)
                 db.session.commit()
-#                app.logger.info('[AUTH] [REG] [Succeess] User:<%s>', ulogin)
+                app.logger.info('[AUTH] [admreg] [Succeess] User:<%s> Role:<%d> registartion captain:<%s>',current_user.login, current_user.rid, ulogin)
                 return redirect(url_for('adm'))
             except:
-#                app.logger.error('[AUTH] [REG] [Failed] User:<%s>. Error DB insert.', ulogin)
+                app.logger.error('[AUTH] [admreg] [Failed] User:<%s>. Error DB insert.', ulogin)
                 flash('Error DB insert')
                 return redirect(url_for('adm'))
         else:
-#            app.logger.warning('[AUTH] [REG] [Failed] Please, enter other login or not null login or not null password')
+            app.logger.warning('[AUTH] [admreg] [Failed] Please, enter other login or not null login or not null password')
             flash('Please, enter other login or not null login or not null password')
             return redirect(url_for('adm'))
     else:
