@@ -6,7 +6,7 @@ TaskState
 
 {% block body %}
     <p class="lead text-success"> <b> # Users statistics &gt;&gt;</b> </p>
-    {% if users|length > 0 %}
+    {% if users.items|length > 0 %}
     <table class="table table-dark text-success">
         <thead>
             <tr>
@@ -16,7 +16,7 @@ TaskState
             </tr>
         </thead>
         <tbody>
-        {% for el in users %}
+        {% for el in users.items %}
             <tr>
                 <td>{{ el.id }}</td>
                 <th>{{ el.login }}</th>
@@ -25,6 +25,8 @@ TaskState
         {% endfor %}
         </tbody>
     </table>
+    <div class="alert alert-success" role="alert"> {{ pagination.links }} </div>
+
 
     {% else %}
         <p class="lead text-success"> !!! Users data not found</p>

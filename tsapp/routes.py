@@ -6,6 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import logging
 from flask.logging import default_handler
 from logging.handlers import RotatingFileHandler
+from flask_paginate import Pagination, get_page_parameter
 import time
 import os
 
@@ -298,15 +299,17 @@ def task_del(tid):
 @login_required
 def tasklist():
     rid = f_rid_get(request)
-    users = TS_User.query.order_by(TS_User.date.desc()).all()
+    page = request.args.get(get_page_parameter(), type=int, default=1)
+    #users = TS_User.query.order_by(TS_User.date.desc()).all()
     if rid == 2:
-        tasks = TS_Task.query.order_by(TS_Task.date.desc()).all()
+        tasks = TS_Task.query.order_by(TS_Task.tid.desc()).paginate(page=page, per_page=10)
     if rid == 1:
-        tasks = TS_Task.query.filter(or_(TS_Task.private==False, and_(TS_Task.uid1==current_user.id, TS_Task.private==True))).order_by(TS_Task.date.desc()).all()
+        tasks = TS_Task.query.filter(or_(TS_Task.private==False, and_(TS_Task.uid1==current_user.id, TS_Task.private==True))).order_by(TS_Task.tid.desc()).paginate(page=page, per_page=10)
     if rid == 0:
-        tasks = TS_Task.query.filter(TS_Task.uid1==current_user.id).order_by(TS_Task.date.desc()).all()
+        tasks = TS_Task.query.filter(TS_Task.uid1==current_user.id).order_by(TS_Task.tid.desc()).paginate(page=page, per_page=10)
+    pagination = Pagination(page=page, total=tasks.total, record_name='tasks')
     app.logger.info('[FUNC] [/tasklist] [Succeess] User:<%s> Role:<%d>/<%d>', current_user.login, current_user.rid, rid)
-    return render_template('task_list.html', tasks=tasks, desteam=desteam, tstatus=tstatus, users=users)
+    return render_template('task_list.html', tasks=tasks, desteam=desteam, tstatus=tstatus, pagination=pagination)
 
 
 @app.route('/task/<int:tid>/towork')
@@ -381,8 +384,10 @@ def task_nstatus(tid):
 @app.route('/userstatus')
 @login_required
 def userstatus():
-    users = TS_User.query.order_by(TS_User.login.asc()).all()
-    return render_template("userstatus.html", users=users)
+    page = request.args.get(get_page_parameter(), type=int, default=1)
+    users = TS_User.query.order_by(TS_User.id.desc()).paginate(page=page, per_page=10)
+    pagination = Pagination(page=page, total=users.total, record_name='users')
+    return render_template("userstatus.html", users=users, pagination=pagination)
 
 
 @app.route('/search', methods=['GET'])
@@ -408,12 +413,14 @@ def search():
 def adm():
     reg = 0
     rid = f_rid_get(request)
+    page = request.args.get(get_page_parameter(), type=int, default=1)
     if rid == 2:
-        users = TS_User.query.order_by(TS_User.date.desc()).all()
-        app.logger.info('[FUNC] [/adminpanel] [Succeess] User:<%s> Role:<%d>/<%d> Read users: <%d>', current_user.login, current_user.rid, rid, len(users))
-        return render_template("admpanel.html", users=users, rteam=rteam, reg=reg)
+        users = TS_User.query.order_by(TS_User.id.desc()).paginate(page=page, per_page=10)
+        pagination = Pagination(page=page, total=users.total, record_name='users')
+        app.logger.info('[FUNC] [/adminpanel] [Succeess] User:<%s> Role:<%d>/<%d> Read users: <%d>', current_user.login, current_user.rid, rid, len(users.items))
+        return render_template("admpanel.html", users=users, rteam=rteam, reg=reg, pagination=pagination)
     else:
-        users = TS_User.query.filter(TS_User.rid==2).order_by(TS_User.date.desc()).all()
+        users = TS_User.query.filter(TS_User.rid==2).order_by(TS_User.id.desc()).all()
         if len(users) == 0:
             reg = 1
             app.logger.info('[FUNC] [/adminpanel] [Succeess] User:<%s> Role:<%d>/<%d> Start initialization >> Registration of a new captain for the service', current_user.login, current_user.rid, rid)
