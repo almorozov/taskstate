@@ -300,7 +300,6 @@ def task_del(tid):
 def tasklist():
     rid = f_rid_get(request)
     page = request.args.get(get_page_parameter(), type=int, default=1)
-    #users = TS_User.query.order_by(TS_User.date.desc()).all()
     if rid == 2:
         tasks = TS_Task.query.order_by(TS_Task.tid.desc()).paginate(page=page, per_page=10)
     if rid == 1:
